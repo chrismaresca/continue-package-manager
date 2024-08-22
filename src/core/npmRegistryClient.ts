@@ -1,7 +1,7 @@
 import fs from "fs";
 import https from "https";
 import path from "path";
-import tar from "tar";
+import { extract } from "tar";
 
 /**
  * A client for the NPM registry API.
@@ -15,24 +15,17 @@ export class NpmRegistryClient {
    * @returns Information about the package
    */
   async getPackageInfo(name: string, absoluteVersion: string): Promise<any> {
-    const resp = await fetch(
-      `https://registry.npmjs.org/${name}/${absoluteVersion}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      }
-    );
+    const resp = await fetch(`https://registry.npmjs.org/${name}/${absoluteVersion}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
     const data = await resp.json();
     return data;
   }
 
-  async downloadTarball(
-    name: string,
-    absoluteVersion: string,
-    downloadToPath: string
-  ): Promise<void> {
+  async downloadTarball(name: string, absoluteVersion: string, downloadToPath: string): Promise<void> {
     const url = `https://registry.npmjs.org/${name}/-/${name}-${absoluteVersion}.tgz`;
     await new Promise((resolve, reject) => {
       const fileStream = fs.createWriteStream(downloadToPath);
@@ -49,18 +42,16 @@ export class NpmRegistryClient {
         .on("error", (error) => {
           fileStream.close();
           fs.unlink(downloadToPath, () => {}); // Delete the file if an error occurs
-          console.error(
-            `Error downloading package ${name}@${absoluteVersion}:`,
-            error
-          );
+          console.error(`Error downloading package ${name}@${absoluteVersion}:`, error);
           reject(error);
         });
     });
 
     // Extract the tarball
     const targetDir = path.dirname(downloadToPath);
+
     try {
-      await tar.extract({
+      await extract({
         file: downloadToPath,
         cwd: targetDir,
       });

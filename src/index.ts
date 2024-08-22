@@ -1,5 +1,9 @@
 import { program } from "commander";
 
+// Add and Install imports
+import { add } from "./commands/add";
+import { install } from "./commands/install";
+
 /**
  * Adds the dependency to the “dependencies” object in package.json
  *
@@ -9,8 +13,10 @@ program
   .command("add <package>")
   .description("Add a package")
   .action((pkg) => {
-    // -- IMPLEMENT ADD COMMAND -- //
-    const [packageName, version] = pkg.split("@");
+    add(pkg).catch((err) => {
+      console.error(`Failed to add package: ${err.message}`);
+      process.exit(1);
+    });
   });
 
 /**
@@ -22,7 +28,10 @@ program
   .command("install")
   .description("Install dependencies")
   .action(async () => {
-    // -- IMPLEMENT INSTALL COMMAND -- //
+    install().catch((err) => {
+      console.error(`Failed to install packages: ${err.message}`);
+      process.exit(1);
+    });
   });
 
 program.parse(process.argv);
