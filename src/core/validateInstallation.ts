@@ -9,6 +9,8 @@ interface ValidationResult {
 /**
  * Validates the installation of a package by checking the existence of the package directory,
  * the presence of the `package.json` file, and the entry point specified within `package.json`.
+ * If the entry point cannot be found, still returns true but logs a warning to the user
+ * @todo Add better support to parse for the entry point...ran out of time
  *
  * @param packageName The name of the package being validated.
  * @param version The version of the package being validated.

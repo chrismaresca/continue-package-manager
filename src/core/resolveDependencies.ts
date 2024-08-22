@@ -5,9 +5,22 @@ import { InstalledMap } from "../models/graphInterface";
 
 import installPackage from "./installPackage";
 import { NpmRegistryClient } from "./npmRegistryClient";
-import exp from "constants";
 
-const resolveDependencies = async (client: NpmRegistryClient, packageName: string, version: string, nodeModulesPath: string, installedMap: InstalledMap, dependencyStack: string[] = []) => {
+/**
+ * Resolves and installs the dependencies for a given package recursively.
+ * This function handles version conflicts, detects circular dependencies,
+ * and logs any issues encountered during the resolution process.
+ *
+ * @param client - The NpmRegistryClient instance used to fetch package information.
+ * @param packageName - The name of the package for which dependencies are being resolved.
+ * @param version - The version string of the package being resolved.
+ * @param nodeModulesPath - The path to the node_modules directory where packages are installed.
+ * @param installedMap - A map tracking installed packages and their versions.
+ * @param dependencyStack - A stack used to detect and log circular dependencies.
+ * @returns A promise that resolves when all dependencies have been processed.
+ */
+const resolveDependencies = async (client: NpmRegistryClient, packageName: string, version: string, nodeModulesPath: string, installedMap: InstalledMap, checkedDependencies: Set<string> = new Set(), dependencyStack: string[] = []) => {
+  //   Parse the exact version from potential semver derivatives (i.e. '^7.4.3')
   const exactVersion = parseVersion(version);
 
   if (!exactVersion) {
@@ -15,7 +28,8 @@ const resolveDependencies = async (client: NpmRegistryClient, packageName: strin
     return;
   }
 
-  // Detect and log circular dependencies
+  // Detect and log circular dependencies.
+  //   Attempted to look through the dependency stack for a given package to find duplicate.
   if (dependencyStack.includes(packageName)) {
     const circularPath = [...dependencyStack, packageName].join(" → ");
     console.error(`Circular dependency detected: ${circularPath}`);
@@ -36,6 +50,12 @@ const resolveDependencies = async (client: NpmRegistryClient, packageName: strin
   const dependencies = packageInfo.dependencies || {};
 
   for (const [depName, depVersion] of Object.entries(dependencies)) {
+    const dependencyKey = `${depName}@${depVersion}`;
+    if (checkedDependencies.has(dependencyKey)) {
+      console.log(`Skipping already checked dependency: ${dependencyKey}`);
+      continue;
+    }
+    checkedDependencies.add(dependencyKey);
     if (installedMap[depName]) {
       if (!semver.satisfies(installedMap[depName], depVersion as string)) {
         // Log the conflict with the graph format
@@ -43,7 +63,7 @@ const resolveDependencies = async (client: NpmRegistryClient, packageName: strin
         console.log(`Conflict: ${depName}@${installedMap[depName]} <---> ${depName}@${depVersion}`);
       }
     } else {
-      await resolveDependencies(client, depName, depVersion as string, nodeModulesPath, installedMap, [...dependencyStack]);
+      await resolveDependencies(client, depName, depVersion as string, nodeModulesPath, installedMap, checkedDependencies, [...dependencyStack]);
     }
   }
 

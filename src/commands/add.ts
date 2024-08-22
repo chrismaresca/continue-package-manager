@@ -9,6 +9,18 @@ import { parsePackageSpec } from "../utils/parsePackageSpec";
 const packageJsonPath = path.resolve(process.cwd(), "package.json");
 const client = new NpmRegistryClient();
 
+/**
+ * Adds a specified package to the dependencies in the package.json file.
+ * This function fetches the package information, checks for version conflicts, 
+ * updates the package.json file, and validates the installation. A progress bar 
+ * is displayed to provide feedback during the process, and it stops if any errors 
+ * are encountered, logging a failure message with the error details.
+ * @todo Add support for semver range syntax and do better job checking for version conflicts
+ *
+ *
+ * @param pkg - The package specification (e.g., "package-name@1.0.0", or "package-name", or "package-name@1.0") to be added to the dependencies.
+ * @returns A promise that resolves when the package has been successfully added and validated.
+ */
 export const add = async (pkg: string): Promise<void> => {
   // Set up the progress bar
   const progressBar = new cliProgress.SingleBar(
@@ -47,7 +59,7 @@ export const add = async (pkg: string): Promise<void> => {
       if (existingDependencies[depName]) {
         const existingVersion = existingDependencies[depName];
         if (!semver.satisfies(existingVersion, depVersion as string)) {
-          throw new Error(`Version conflict: ${depName} requires ${depVersion}, but ${existingVersion} is installed.`);
+          throw new Error(`Version conflict: ${depName} requires ${depVersion}, but ${existingVersion} is currently installed as a top-level dependency.`);
         }
       }
     }
