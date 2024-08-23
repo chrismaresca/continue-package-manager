@@ -41,12 +41,11 @@ const resolveDependencies = async (client: NpmRegistryClient, packageName: strin
   // Install the package if not already installed or if the version doesn't match
   await installPackage(client, packageName, exactVersion, nodeModulesPath);
 
-  // Update the installed map with the new version
-  installedMap[packageName] = exactVersion;
-
-  // Push the current package onto the stack
-  dependencyStack.push(packageName);
-
+  // Update the installed map with the new version (top-level only)
+  if (!dependencyStack.length) {
+    installedMap[packageName] = exactVersion;
+  }
+  
   const dependencies = packageInfo.dependencies || {};
 
   for (const [depName, depVersion] of Object.entries(dependencies)) {
@@ -58,9 +57,15 @@ const resolveDependencies = async (client: NpmRegistryClient, packageName: strin
     checkedDependencies.add(dependencyKey);
     if (installedMap[depName]) {
       if (!semver.satisfies(installedMap[depName], depVersion as string)) {
-        // Log the conflict with the graph format
         console.warn(`Version conflict detected: ${depName}@${depVersion} required, but ${installedMap[depName]} is installed.`);
         console.log(`Conflict: ${depName}@${installedMap[depName]} <---> ${depName}@${depVersion}`);
+
+        // Push the current package onto the stack
+        dependencyStack.push(packageName);
+
+        // Resolve by installing the conflicting dependency in a nested node_modules
+        // const nestedNodeModulesPath = path.join(nodeModulesPath, packageName, "node_modules");
+        // await resolveDependencies(client, depName, depVersion as string, nestedNodeModulesPath, installedMap, checkedDependencies, [...dependencyStack]);
       }
     } else {
       await resolveDependencies(client, depName, depVersion as string, nodeModulesPath, installedMap, checkedDependencies, [...dependencyStack]);
